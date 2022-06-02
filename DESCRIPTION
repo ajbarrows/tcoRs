@@ -1,11 +1,10 @@
 Package: tcoRs
 Type: Package
-Title: UVM TCORS Data Management (Title Case)
+Title: UVM TCORS Data Management
 Version: 0.1.0
 Author: Tony Barrows
 Maintainer: Tony Barrows <ajbarrow@uvm.edu>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
+Description: Data management functions for UVM TCORS projects, specifically the "main trial."
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
