@@ -13,9 +13,11 @@ Imports:
     dplyr,
     lubridate,
     magrittr,
+    openxlsx,
     plyr,
     redcapAPI,
     rlang,
-    tidyr
+    tidyr,
+    tidyselect
 Depends: 
     R (>= 2.10)

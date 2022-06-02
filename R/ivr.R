@@ -140,10 +140,92 @@ clean_ivr <- function(ivr_raw, enrl) {
       .data$week,
       dplyr::everything()
     ) %>%
+    dplyr::select(-.data$callerid) %>%
     pjt_ste() %>%
     pi_prop()
-
-  ivr
 }
+
+#' Summarize IVR Data Set
+#'
+#' Obtain weekly summary values for each subject from daily surveys.
+#'
+#' @param ivr_clean Exported from tcoRs::clean_ivr()
+#' @param conditions Exported from tcoRs::get_maintrial_conditions()
+#'
+#' @return Data Frame -- one entry for each subject for each week.
+#' @export
+#' @importFrom rlang .data
+#'
+#' @examples
+#' \dontrun{
+#' ivr_sum <- summarize_ivr(ivr_clean, conditions)
+#' }
+summarize_ivr <- function(ivr_clean, conditions) {
+  vars_to_summarize <-
+    c(
+      "cigs",
+      "studycigs",
+      "nonstudycigs",
+      "smokeless",
+      "ecig",
+      "pod",
+      "npods",
+      "studyecig",
+      "studypod",
+      "nstudypods",
+      "nonstudyecig",
+      "nonstudypod",
+      "nnonstudypods",
+      "nicrep",
+      "irritability",
+      "anxiety",
+      "restlessness",
+      "sad",
+      "concentration",
+      "sleep"
+    )
+  # join with conditions
+  ivr_sum <- ivr_clean %>%
+    dplyr::left_join(conditions, by = "screen_id")
+
+  ivr_sum <- ivr_sum %>%
+    dplyr::group_by(.data$screen_id, .data$week) %>%
+    dplyr::mutate(any_zero = dplyr::case_when(
+      any(.data$studycigs == 0 &
+            .data$nonstudycigs == 0, na.rm = TRUE) ~ "yes"
+    )) %>%
+    dplyr::group_by(
+      .data$screen_id,
+      .data$week,
+      .data$project,
+      .data$site,
+      .data$pi_prop,
+      "letter_code" = .data$trt_grp,
+      .data$menthol_status,
+      .data$any_zero
+    ) %>%
+    dplyr::summarize(dplyr::across(
+      tidyselect::all_of(vars_to_summarize),
+      list(mean = mean, n = ~ sum(!is.na(.x))),
+      na.rm = TRUE
+    ), .groups = "keep"
+    ) %>%
+    dplyr::filter(!is.na(.data$week))
+
+  . <- NULL
+  # organize data set
+  ivr_sum <- ivr_sum %>%
+    dplyr::arrange(.data$screen_id, .data$week) %>%
+    dplyr::select(order(match(
+      sub("_.*", "", names(.)), vars_to_summarize, nomatch = 0
+    )))
+
+  # primary outcome
+  ivr_w16 <- ivr_sum %>% dplyr::filter(.data$week == "week16")
+
+
+  list(ivr_sum, ivr_w16)
+}
+
 
 
