@@ -16,7 +16,8 @@ Data frame with column appended `pi_prop` to designate study proper from pilot.
 Impose Pilot and Proper
 }
 \examples{
-\dontrun{
-df <- pi_prop(df)
-}
+
+data("enrl_sample")
+pi_prop(enrl_sample)
+
 }

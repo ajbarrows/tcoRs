@@ -16,7 +16,7 @@ Data frame with columns appended for `project` and `site`
 Impose Project and Site
 }
 \examples{
-\dontrun{
-df <- pjt_ste(df)
-}
+data("enrl_sample")
+pjt_ste(enrl_sample)
+
 }

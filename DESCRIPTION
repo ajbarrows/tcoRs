@@ -10,4 +10,10 @@ Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.2.0
 Imports: 
-    redcapAPI
+    dplyr,
+    magrittr,
+    redcapAPI,
+    rlang,
+    tidyr
+Depends: 
+    R (>= 2.10)

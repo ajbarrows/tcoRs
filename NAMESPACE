@@ -2,5 +2,8 @@
 
 export(build_rcon)
 export(download_rc_dataframe)
+export(get_maintrial_enrollment)
 export(pi_prop)
 export(pjt_ste)
+importFrom(magrittr,"%>%")
+importFrom(rlang,.data)

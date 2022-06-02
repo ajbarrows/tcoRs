@@ -6,9 +6,9 @@
 #' @export
 #'
 #' @examples
-#' \dontrun{
-#' df <- pjt_ste(df)
-#' }
+#' data("enrl_sample")
+#' pjt_ste(enrl_sample)
+#'
 pjt_ste <- function(df){
   pjt <- substr(df$screen_id, 1, 1)
   ste <- substr(df$screen_id, 3, 3)
@@ -35,9 +35,10 @@ pjt_ste <- function(df){
 #' @export
 #'
 #' @examples
-#' \dontrun{
-#' df <- pi_prop(df)
-#' }
+#'
+#' data("enrl_sample")
+#' pi_prop(enrl_sample)
+#'
 pi_prop <- function(df) {
   df$pi_prop <- ifelse(substr(df$screen_id, 4, 4) == 9, "pilot", "proper")
   df
