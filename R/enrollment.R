@@ -11,24 +11,36 @@
 #' \dontrun{
 #' enrl <- get_maintrial_enrollment(rcon)
 #' }
-get_maintrial_enrollment <- function(rcon, fields = tcoRs:::field_vectors$enrollment_fields) {
-  events <- c("screening_arm_1", "baseline_2_arm_1", "week_16_arm_1")
-  fields <- c(fields, "screen_id")
+get_maintrial_enrollment <-
+  function(rcon,
+           fields = c(field_vectors$enrollment_fields)) {
+    events <- c("screening_arm_1", "baseline_2_arm_1", "week_16_arm_1")
+    fields <- c(fields, "screen_id", "sl_ineligible")
 
-  df <- tcoRs::download_rc_dataframe(rcon, fields = fields, events = events)
-  df %>%
-    dplyr::group_by(.data$screen_id) %>%
-    tidyr::fill(.data$ps2_date, .data$pevn_date_session_all, .direction = "updown") %>%
-    dplyr::filter(.data$redcap_event_name == "screening_arm_1") %>%
-    dplyr::mutate(
-      baseline2_date = as.Date(.data$ps2_date)
-    ) %>%
-    tcoRs::pjt_ste() %>%
-    tcoRs::pi_prop() %>%
-    dplyr::select(
-      .data$screen_id, .data$sl_status, .data$screen_date, .data$baseline2_date,
-      "week16_date" = .data$pevn_date_session_all,
-      .data$project, .data$site, .data$pi_prop
-    ) %>%
-    dplyr::ungroup()
-}
+    df <-
+      tcoRs::download_rc_dataframe(rcon, fields = fields, events = events)
+
+    df <- df %>%
+      tcoRs::matrix_to_vector(
+        "scrn_ineligible_reasons",
+        field_vectors$scrn_inel_names,
+        "sl_ineligible")
+    df <- df %>%
+      dplyr::group_by(.data$screen_id) %>%
+      tidyr::fill(.data$ps2_date, .data$pevn_date_session_all, .direction = "updown") %>%
+      dplyr::filter(.data$redcap_event_name == "screening_arm_1") %>%
+      dplyr::mutate(baseline2_date = as.Date(.data$ps2_date)) %>%
+      tcoRs::pjt_ste() %>%
+      tcoRs::pi_prop() %>%
+      dplyr::select(
+        .data$screen_id,
+        .data$sl_status,
+        .data$screen_date,
+        .data$baseline2_date,
+        "week16_date" = .data$pevn_date_session_all,
+        .data$project,
+        .data$site,
+        .data$pi_prop
+      ) %>%
+      dplyr::ungroup()
+  }

@@ -44,6 +44,6 @@ download_rc_dataframe <-
         events = events,
         form_complete_auto = FALSE,
         dates = FALSE,
-        factors = TRUE
+        factors = FALSE
       )
   }
