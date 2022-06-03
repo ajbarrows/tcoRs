@@ -4,7 +4,7 @@
 \alias{get_maintrial_enrollment}
 \title{Pull Main Trial Enrollment Information}
 \usage{
-get_maintrial_enrollment(rcon, fields = c(field_vectors$enrollment_fields))
+get_maintrial_enrollment(rcon, fields = field_vectors$enrollment_fields)
 }
 \arguments{
 \item{rcon}{REDCap connection object exported from tcoRs::build_rcon()}

@@ -17,6 +17,7 @@ Imports:
     plyr,
     redcapAPI,
     rlang,
+    stringr,
     tidyr,
     tidyselect
 Depends: 
