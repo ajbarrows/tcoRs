@@ -18,6 +18,7 @@ Imports:
     redcapAPI,
     rlang,
     stringr,
+    tibble,
     tidyr,
     tidyselect
 Depends: 

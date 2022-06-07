@@ -1,4 +1,3 @@
-
 #' Pull Main Trial Enrollment Information
 #'
 #' @param rcon REDCap connection object exported from tcoRs::build_rcon()
@@ -98,3 +97,59 @@ get_maintrial_prescreens <- function(rcon,
      as.Date(.data$recruit_date) >= min_date
    )
 }
+#
+#' Summarize Main Trial Prescreens
+#'
+#' @param df Data Frame exported from tcoRs::get_maintrial_prescreens()
+#'
+#' @return List of data frames with (1) prsecreen tallies by site and (2) by exclusion criterion
+#' @export
+#' @importFrom rlang .data
+#' @examples
+#' \dontrun{
+#' ps_vector <- summarize_maintrial_prescreens(ps_df)
+#' }
+summarize_maintrial_prescreens <- function(df) {
+  n <- df %>%
+    dplyr::mutate(
+      eligible = dplyr::case_when(
+        .data$elig_project_none == 1 ~ "ineligible",
+        .data$elig_project_none == 0 ~ "eligible",
+        is.na(.data$elig_project_none) ~ "ineligible"
+      )
+    ) %>%
+    dplyr::group_by(.data$eligible, .data$site) %>%
+    dplyr::count(.data$eligible) %>%
+    dplyr::ungroup() %>%
+    tidyr::pivot_wider(
+      names_from = .data$site, values_from = .data$n
+    ) %>%
+    tibble::column_to_rownames(var = "eligible")
+
+  ps_summary <- df %>%
+    dplyr::select(
+      .data$site,
+      .data$age,
+      .data$daily_smoke,
+      .data$less_than_5cpd,
+      .data$smoking_less_than_1year,
+      .data$other_tobacco_use,
+      .data$nic_rep,
+      .data$quit_med,
+      .data$quit_plans,
+      .data$rolls_own,
+      .data$pregnant,
+      .data$other_research,
+      .data$opiate_pain_meds,
+      .data$unstable_opioid_txt,
+      .data$daily_ecig_user
+    ) %>%
+    dplyr::group_by(.data$site) %>%
+    dplyr::summarize(dplyr::across(tidyselect::everything(), sum, na.rm = TRUE)) %>%
+    tidyr::pivot_longer(
+      cols = -.data$site
+    )
+  list(n, ps_summary)
+}
+
+
