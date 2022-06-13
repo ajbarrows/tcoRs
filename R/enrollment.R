@@ -154,3 +154,56 @@ summarize_maintrial_prescreens <- function(df) {
 }
 
 
+#' Summarize Maintrial Screenings
+#'
+#' @param df_enrl Data frame exported from tcoRs::get_maintrial_enrollment()
+#' @param filter_proper Filter only study proper IDs. If `FALSE`, all IDs are counted.
+#'
+#' @return List of data frames with
+#' 1. Screening tallies by site
+#' 2. Exclusion criteria
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' scrn_vector <- summarize_maintrial_screenings(df_enrl)
+#' }
+summarize_maintrial_screenings <- function(df_enrl, filter_proper = TRUE) {
+
+  if (filter_proper) {
+    df_enrl <- df_enrl %>% dplyr::filter(.data$pi_prop == "proper")
+  }
+
+  df_enrl <- df_enrl %>% dplyr::group_by(.data$project, .data$site)
+
+  n <- df_enrl %>%
+    dplyr::mutate(
+      eligible = ifelse(is.na(.data$scrn_ineligible_reasons),
+                        "eligible",
+                        "ineligible")
+      ) %>%
+    dplyr::count(.data$eligible) %>%
+    tidyr::pivot_wider(
+      names_from = c("site", "eligible"),
+      values_from = "n"
+    )
+
+
+  scrn_summary <- df_enrl %>%
+    dplyr::group_by(.data$project, .data$site) %>%
+    dplyr::select(.data$scrn_ineligible_reasons, .data$project, .data$site) %>%
+    dplyr::rowwise() %>%
+    dplyr::mutate(
+      scrn_ineligible_reasons = strsplit(.data$scrn_ineligible_reasons, ",")
+      ) %>%
+    tidyr::unnest(.data$scrn_ineligible_reasons) %>%
+    tidyr::drop_na() %>%
+    dplyr::count(.data$scrn_ineligible_reasons) %>%
+    tidyr::pivot_wider(
+      names_from = "site",
+      values_from = "n"
+    )
+
+  list(n, scrn_summary)
+}
+
