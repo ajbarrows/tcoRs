@@ -34,6 +34,7 @@ get_maintrial_enrollment <-
       dplyr::select(
         .data$screen_id,
         .data$sl_status,
+        .data$scrn_ineligible_reasons,
         .data$screen_date,
         .data$baseline2_date,
         "week16_date" = .data$pevn_date_session_all,
