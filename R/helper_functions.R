@@ -93,3 +93,22 @@ matrix_to_vector <- function(df, colname, matrix_vars, select_string) {
 }
 
 
+#' REDCap Factors
+#'
+#' @param v a vector of data containing class `redcapFactor`
+#'
+#' @return `TRUE` or `FALSE`
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' is.redcapFactor(df$rc_factor_var)
+#' }
+is.redcapFactor <- function(v) {
+  # extract attributes to be applied later
+  redcapLabels <- attributes(v)$redcapLabels
+  redcapLevels <- attributes(v)$redcapLevels
+
+  !is.null(redcapLabels) | !is.null(redcapLevels)
+}
+
