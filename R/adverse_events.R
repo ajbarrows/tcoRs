@@ -73,6 +73,7 @@ clean_ae <- function(ae_df) {
       )
     ) %>%
     dplyr::select(!tidyselect::starts_with(filter_select)) %>%
-    dplyr::select(-c(.data$ae_common)) %>%
+    dplyr::select(-c(.data$ae_common, .data$ae_meddra1, .data$ae_meddra2)) %>%
     dplyr::select(.data$screen_id, .data$description, .data$ae_descrip, .data$CTCAE.Term, tidyselect::everything())
+
 }
