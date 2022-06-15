@@ -63,7 +63,8 @@ get_dsmb_measures <- function(rcon) {
 
   CO %>%
     dplyr::left_join(resp, by = join_param) %>%
-    dplyr::left_join(bdi_oasis, by = join_param)
+    dplyr::left_join(bdi_oasis, by = join_param) %>%
+    dplyr::mutate(session = factor(.data$session, levels = field_vectors$session_levels_fields))
 }
 
 

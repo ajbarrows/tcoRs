@@ -207,3 +207,42 @@ summarize_maintrial_screenings <- function(df_enrl, filter_proper = TRUE) {
   list(n, scrn_summary)
 }
 
+
+#' Session Distribution
+#'
+#' @description returns a tally of sessions completed for each project
+#' @param rcon REDCap connection object exported from `tcors::build_rcon()`
+#'
+#' @return data frame of session counts
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' session_distribution(rcon)
+#' }
+session_distribution <- function(rcon) {
+  fields <- c("screen_id", field_vectors$session_dates_fields)
+  df <- download_rc_dataframe(rcon, fields = fields)
+
+  rm_str <- "_arm_1"
+  df %>%
+    tidyr::unite(
+      col = "date",
+      tidyselect::contains("date"),
+      na.rm = TRUE
+    ) %>%
+    dplyr::mutate(
+      date = as.Date(.data$date),
+      session = stringr::str_remove_all(.data$redcap_event_name, rm_str),
+      session = factor(.data$session, levels = field_vectors$session_levels_fields)
+      ) %>%
+    dplyr::filter(!is.na(date)) %>%
+    pjt_ste() %>%
+    dplyr::group_by(.data$project) %>%
+    dplyr::count(.data$session) %>%
+    tidyr::pivot_wider(
+      names_from = .data$project,
+      values_from = .data$n
+    )
+}
+
