@@ -138,3 +138,64 @@ odd_even_dsmb <- function(df) {
 
   list(odd, evn)
 }
+
+#' Value Summary DSMB
+#'
+#' @description Summarize single-column quantity with week-bin variable
+#' @param df data frame with value, week bin, condition
+#' @param variable string, one of "co", "bdi", or "oasis"
+#'
+#' @return vector of data frames, one for each project
+#' @importFrom stats median IQR
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' df <- tcoRs::get_dsmb_measures(rcon) %>%
+#' dplyr::left_join(cond, by = "screen_id") %>%
+#' tcoRs::pjt_ste() %>%
+#' value_summary_dsmb("co")
+#' }
+value_summary_dsmb <- function(df, variable) {
+  df_sub <- df %>%
+    dplyr::group_by(.data$project, .data$trt_grp, .data$week_bin) %>%
+    dplyr::summarize(
+      dplyr::across(!!variable, list(mean = mean, median = median, IQR = IQR), na.rm = TRUE),
+      .groups = "keep"
+    ) %>%
+    dplyr::filter(!is.na(.data$trt_grp) & !is.na(.data$week_bin)) %>%
+    dplyr::ungroup()
+
+
+  df_vector <- split(df_sub, f = df_sub$project)
+
+  p1 <- pivot_week_summary(df_vector[[1]])
+  p2 <- pivot_week_summary(df_vector[[2]])
+  p3 <- pivot_week_summary(df_vector[[3]])
+
+  list(p1, p2, p3)
+}
+
+#' Pivot Week Summary
+#'
+#' @param df Summarized data frame
+#'
+#' @return data frame
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' pivot_week_summary(df_vector[[1]])
+#' }
+pivot_week_summary <- function(df) {
+  df %>%
+    dplyr::select(-.data$project) %>%
+    tidyr::pivot_longer(
+      -c(.data$trt_grp, .data$week_bin)
+    ) %>%
+    tidyr::pivot_wider(
+      names_from = .data$trt_grp
+    )
+}
+
+
