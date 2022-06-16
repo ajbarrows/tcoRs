@@ -246,3 +246,56 @@ session_distribution <- function(rcon) {
     )
 }
 
+#' Demographics
+#'
+#' @description get demographic information for the main trial
+#'
+#' @param rcon REDCap connection object exported from tcoRs::build_rcon()
+#' @param cond data frame of conditions exported from tcoRs::get_maintrial_conditions()
+#'
+#' @return data frame of demographic values
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' demographics(rcon, cond)
+#' }
+demographics <- function(rcon, cond) {
+  fields <- c("screen_id", field_vectors$demographic_fields)
+
+  df <- download_rc_dataframe(rcon, fields)
+
+  screen_race_names <- list(
+    "screen_race___1" = "Am. Indian or Alask. Native",
+    "screen_race___2" = "Asian",
+    "screen_race___3" = "Black or African-American",
+    "screen_race___4" = "Native Hawaiian or Pacific Islander",
+    "screen_race___5" = "White",
+    "screen_race___6" = "Other race"
+  )
+
+  df %>%
+    dplyr::filter(.data$redcap_event_name == "screening_arm_1") %>%
+    dplyr::left_join(cond, by = "screen_id") %>%
+    pjt_ste() %>%
+    pi_prop() %>%
+    dplyr::mutate(
+      latino = ifelse(.data$screen_latino___0 == 1, "no","yes"),
+      screen_sex = redcapAPI::redcapFactorFlip(.data$screen_sex)
+      ) %>%
+    matrix_to_vector(colname = "race", screen_race_names, "screen_race") %>%
+    dplyr::rowwise() %>%
+    dplyr::mutate(
+      race = ifelse(
+        lengths(strsplit(.data$race, ",")) > 1,
+        "More than one race",
+        .data$race
+        )
+      ) %>%
+    dplyr::ungroup() %>%
+    dplyr::select(-c(
+      tidyselect::starts_with("redcap"),
+      tidyselect::starts_with("screen_latino")
+      ))
+}
+

@@ -198,4 +198,200 @@ pivot_week_summary <- function(df) {
     )
 }
 
+#' Protocol Violations DSMB
+#'
+#' @param rcon REDCap connection object exported from tcoRs::build_rcon()
+#' @param cond data frame of condition assignments from tcoRs::get_maintrial_conditions()
+#'
+#' @return data frame of protocol violations
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' rcon <- build_rcon("my_secret_token")
+#' cond <- get_maintrial_conditions(usr, pws)
+#' violations <- protocol_violations(rcon, cond)
+#' }
+protocol_violations <- function(rcon, cond) {
+  fields <- c("screen_id", field_vectors$nonmed_fields)
+  df <- download_rc_dataframe(rcon, fields = fields)
+
+  df %>%
+    dplyr::filter(.data$redcap_event_name == "screening_arm_1") %>%
+    dplyr::select(-tidyselect::starts_with("redcap")) %>%
+    dplyr::left_join(cond, by = "screen_id")
+
+}
+
+
+#' Plot randomization progress
+#'
+#' @param enrl data frame exported from tcoRs::get_maintrial_enrollment()
+#' @param goal numeric constant of project's randomization goal
+#' @param min_date string enrollment start date, "yyyy-mm-dd"
+#' @param end_date string projected enrollment end date, "yyyy-mm-dd"
+#' @param proj string of either "Project 1", "Project 2", or "Project 3"
+#' @param title string, title of plot
+#'
+#' @return ggplot2 object
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' randomization_accrual_plot(
+#' enrl,
+#' goal = 212,
+#' min_date = "2020-11-01",
+#' end_date = "2023-06-01",
+#' proj = "Project 1",
+#' title = "Recruitment Accrual Graph: Project 1"
+#'
+#' )
+#' }
+randomization_accrual_plot <- function(enrl, goal, min_date, end_date, proj, title) {
+  end_date <- as.Date(end_date)
+  min_date <- as.Date(min_date)
+
+  # create sequence of dates and enrollment per day based on
+  # goal and date inputs
+  x_seq <- seq(min_date, end_date, by = "month")
+  y_seq <- seq(0, goal, length.out = length(x_seq))
+  enrollment_goal <- data.frame(date = x_seq, target = y_seq, project = proj)
+
+  colors <- c(
+    "Target" = "#7CAE00",
+    "Projected Accrual" = "#F8766D",
+    "Actual Accrual" = "#00BFC4"
+  )
+
+  # sequence enrollment using dates
+  randomized_progress <- enrl %>%
+    dplyr::filter(
+      .data$project == proj,
+      !is.na(.data$baseline2_date)
+      ) %>%
+    dplyr::select("date" = .data$baseline2_date) %>%
+    dplyr::arrange(.data$date) %>%
+    dplyr::mutate(randomized = seq_along(.data$date))
+
+
+  ggplot2::ggplot(enrollment_goal, ggplot2::aes(x = .data$date, y = .data$target)) +
+    ggplot2::geom_line(ggplot2::aes(color = "Projected Accrual"), linetype = "dashed") +
+    ggplot2::geom_line(ggplot2::aes(y = goal, color = "Target"), linetype = "dotted") +
+    ggplot2::geom_line(
+      data = randomized_progress,
+      ggplot2::aes(x = .data$date, y = .data$randomized, color = "Actual Accrual")) +
+    ggplot2::geom_point(
+      data = randomized_progress,
+      ggplot2::aes(x = .data$date, y = .data$randomized, color = "Actual Accrual")) +
+    ggplot2::annotate(
+      "text",
+      x = as.Date("2021-02-01"),
+      y = goal - 10,
+      label = paste("Target = ", goal)) +
+    ggplot2::scale_color_manual(values=colors) +
+    ggplot2::theme_classic(base_size = 15) +
+    ggplot2::labs(x = "", y = "Subjects Enrolled", color = "",
+         title = title)
+}
+
+
+#' Summarize EVALI symptoms
+#'
+#' @param df data frame exported from tcoRs::get_dsmb_measures()
+#'
+#' @return vector of data frames for all three project, EVALI severe symtpoms summarized
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' summarize_evali(redcap_values)
+#' }
+summarize_evali <- function(df) {
+  resp_sub <- df %>%
+    pi_prop() %>%
+    dplyr::filter(pi_prop == "proper") %>%
+    dplyr::select(
+      .data$screen_id,
+      .data$session,
+      .data$project,
+      .data$trt_grp,
+      tidyselect::all_of(field_vectors$resp_values)
+      ) %>%
+    dplyr::filter(stringr::str_detect(.data$session, "week")) %>%
+    tidyr::pivot_longer(
+      -c(.data$screen_id, .data$session, .data$project, .data$trt_grp)
+    ) %>%
+    dplyr::filter(.data$value == "Severe") %>%
+    dplyr::distinct(.data$screen_id, .data$name, .data$value, .keep_all = TRUE) %>%
+    dplyr::group_by(.data$project, .data$name, .data$trt_grp) %>%
+    dplyr::count()
+
+  resp_vector <- split(resp_sub, f = resp_sub$project)
+
+  p1 <- resp_vector[[1]] %>% tidyr::pivot_wider(
+    names_from = .data$trt_grp,
+    values_from = .data$n,
+    values_fill = 0
+  )
+
+  p2 <- resp_vector[[2]] %>%  tidyr::pivot_wider(
+    names_from = .data$trt_grp,
+    values_from = .data$n,
+    values_fill = 0
+  )
+
+  p3 <- resp_vector[[3]] %>% tidyr::pivot_wider(
+    names_from = .data$trt_grp,
+    values_from = .data$n,
+    values_fill = 0
+  )
+
+  list(p1, p2, p3)
+}
+
+
+ivr_summary_dsmb <- function(ivr_sum) {
+  ivr_sum <- ivr_sum[[1]]
+  ivr_sum$week_bin <- NA
+  ivr_sum$week_bin[ivr_sum$week == "week0"] <- "baseline"
+  ivr_sum$week_bin[ivr_sum$week %in% c("week01", "week02", "week03", "week04")] <- "weeks_1-4"
+  ivr_sum$week_bin[ivr_sum$week %in% c("week05", "week06", "week07", "week08")] <- "weeks_5-8"
+  ivr_sum$week_bin[ivr_sum$week %in% c("week09", "week10", "week11", "week12")] <- "weeks_9-12"
+  ivr_sum$week_bin[ivr_sum$week %in% c("week13", "week14", "week15", "week16")] <- "weeks_13-16"
+
+  ivr_sum$week_bin <- factor(ivr_sum$week_bin, levels = c("baseline", "weeks_1-4", "weeks_5-8", "weeks_9-12", "weeks_13-16"))
+
+  names(ivr_sum) <- stringr::str_remove_all(names(ivr_sum), "_mean")
+  ivr_summary <- ivr_sum %>%
+    dplyr::mutate(nonstudycigs = ifelse(week_bin == "baseline", cigs, nonstudycigs)) %>%
+    dplyr::group_by(.data$project, .data$letter_code, .data$week_bin) %>%
+    dplyr::summarize(
+      dplyr::across(c(
+             .data$studycigs,
+             .data$nonstudycigs,
+             .data$nstudypods,
+             .data$nnonstudypods),
+             list(mean = mean, median = median, IQR = IQR),
+             na.rm = TRUE
+    ),
+    .groups = "keep"
+    ) %>%
+    tidyr::pivot_longer(
+      -c(.data$project, .data$letter_code, .data$week_bin)
+    ) %>%
+    dplyr::filter(!is.na(.data$value) & !is.na(.data$letter_code))
+
+
+  ivr_vector <- split(ivr_summary, f = ivr_summary$project)
+
+  # ivr_vector[[1]] %>%
+  #   tidyr::pivot_wider(
+  #     names_from = "letter_code"
+  #   )
+
+  # TODO: add e-cigarettes, n, peel off proejcts
+}
+
+
 
