@@ -161,7 +161,7 @@ odd_even_dsmb <- function(df) {
 #' @param df data frame with value, week bin, condition
 #' @param variable string, one of "co", "bdi", or "oasis"
 #'
-#' @return data frame of values
+#' @return data frame of values, data frame of subject counts
 #' @importFrom stats median IQR
 #' @export
 #'
@@ -173,14 +173,30 @@ odd_even_dsmb <- function(df) {
 #' value_summary_dsmb("co")
 #' }
 value_summary_dsmb <- function(df, variable) {
-  df %>%
-    dplyr::group_by(.data$project, .data$trt_grp, .data$week_bin) %>%
+  df <- df %>%
+    dplyr::filter(pi_prop == "proper") %>%
+    dplyr::group_by(.data$project, .data$trt_grp, .data$week_bin)
+
+  df_values <- df %>%
     dplyr::summarize(
       dplyr::across(!!variable, list(mean = mean, median = median, IQR = IQR), na.rm = TRUE),
       .groups = "keep"
     ) %>%
     dplyr::filter(!is.na(.data$trt_grp) & !is.na(.data$week_bin)) %>%
-    dplyr::ungroup()
+    dplyr::ungroup() %>%
+    tidyr::pivot_longer(
+      -c("project", "trt_grp", "week_bin")
+    ) %>%
+    tidyr::pivot_wider(
+      names_from = "trt_grp"
+    )
+
+    df_n <- df %>%
+      dplyr::ungroup() %>%
+      dplyr::distinct(.data$screen_id, .data$week_bin) %>%
+      dplyr::count(.data$week_bin)
+
+    list(df_values, df_n)
 }
 
 #' Pivot Week Summary
