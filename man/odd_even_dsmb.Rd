@@ -10,7 +10,7 @@ odd_even_dsmb(df)
 \item{df}{REDCap Data Frame}
 }
 \value{
-vector of data frames, (1) odd weeks, (2) even weeks
+vector of data frames, (1) odd weeks, (2) even weeks, (3) baseline
 }
 \description{
 Odd Even DSMB

@@ -25,8 +25,11 @@ get_dsmb_measures <- function(rcon) {
   df_vector <- odd_even_dsmb(df)
   odd <- df_vector[[1]]
   evn <- df_vector[[2]]
+  bl <- df_vector[[3]]
 
-  df_glued <- rbind(odd, evn) %>% dplyr::arrange(.data$screen_id, .data$session)
+  df_glued <- rbind(odd, evn) %>%
+    dplyr::left_join(bl, by = c("screen_id", "session", "bdi_total", "oasis_total")) %>%
+    dplyr::arrange(.data$screen_id, .data$session)
 
   # CO
   CO <- df %>%
@@ -61,10 +64,13 @@ get_dsmb_measures <- function(rcon) {
 
   join_param <- c("screen_id", "session")
 
-  CO %>%
+  out <- CO %>%
     dplyr::left_join(resp, by = join_param) %>%
     dplyr::left_join(bdi_oasis, by = join_param) %>%
-    dplyr::mutate(session = factor(.data$session, levels = field_vectors$session_levels_fields))
+    dplyr::mutate(session = factor(.data$session, levels = field_vectors$session_levels_fields)) %>%
+    dplyr::filter(!is.na(.data$week_bin)) %>%
+    pjt_ste() %>%
+    pi_prop()
 }
 
 
@@ -101,7 +107,7 @@ week_bin_dsmb <- function(df) {
 #'
 #' @param df REDCap Data Frame
 #'
-#' @return vector of data frames, (1) odd weeks, (2) even weeks
+#' @return vector of data frames, (1) odd weeks, (2) even weeks, (3) baseline
 #' @export
 #'
 #' @examples
@@ -115,6 +121,8 @@ odd_even_dsmb <- function(df) {
   rm_str <- "_arm_1"
   odd_weeks <- stringr::str_remove_all(field_vectors$odd_weeks_fields, rm_str)
   evn_weeks <- stringr::str_remove_all(field_vectors$even_weeks_fields, rm_str)
+  baseline <- "baseline_2"
+  bl_str <- "ps2"
 
   odd <- df %>%
     dplyr::select(
@@ -132,11 +140,19 @@ odd_even_dsmb <- function(df) {
     ) %>%
     dplyr::filter(.data$session %in% evn_weeks)
 
+  bl <- df %>%
+    dplyr::select(
+      .data$screen_id,
+      .data$session,
+      tidyselect::contains(bl_str)
+    ) %>%
+    dplyr::filter(.data$session == baseline)
 
   names(evn) <- stringr::str_remove_all(names(evn), "pevn_|_all")
   names(odd) <- stringr::str_remove_all(names(odd), "podd_")
+  names(bl) <- stringr::str_remove_all(names(bl), "ps2_")
 
-  list(odd, evn)
+  list(odd, evn, bl)
 }
 
 #' Value Summary DSMB
@@ -145,7 +161,7 @@ odd_even_dsmb <- function(df) {
 #' @param df data frame with value, week bin, condition
 #' @param variable string, one of "co", "bdi", or "oasis"
 #'
-#' @return vector of data frames, one for each project
+#' @return data frame of values
 #' @importFrom stats median IQR
 #' @export
 #'
@@ -157,7 +173,7 @@ odd_even_dsmb <- function(df) {
 #' value_summary_dsmb("co")
 #' }
 value_summary_dsmb <- function(df, variable) {
-  df_sub <- df %>%
+  df %>%
     dplyr::group_by(.data$project, .data$trt_grp, .data$week_bin) %>%
     dplyr::summarize(
       dplyr::across(!!variable, list(mean = mean, median = median, IQR = IQR), na.rm = TRUE),
@@ -165,15 +181,6 @@ value_summary_dsmb <- function(df, variable) {
     ) %>%
     dplyr::filter(!is.na(.data$trt_grp) & !is.na(.data$week_bin)) %>%
     dplyr::ungroup()
-
-
-  df_vector <- split(df_sub, f = df_sub$project)
-
-  p1 <- pivot_week_summary(df_vector[[1]])
-  p2 <- pivot_week_summary(df_vector[[2]])
-  p3 <- pivot_week_summary(df_vector[[3]])
-
-  list(p1, p2, p3)
 }
 
 #' Pivot Week Summary
@@ -300,7 +307,7 @@ randomization_accrual_plot <- function(enrl, goal, min_date, end_date, proj, tit
 #'
 #' @param df data frame exported from tcoRs::get_dsmb_measures()
 #'
-#' @return vector of data frames for all three project, EVALI severe symtpoms summarized
+#' @return data frame of EVALI severe symtpoms summarized
 #' @export
 #'
 #' @examples
@@ -308,7 +315,7 @@ randomization_accrual_plot <- function(enrl, goal, min_date, end_date, proj, tit
 #' summarize_evali(redcap_values)
 #' }
 summarize_evali <- function(df) {
-  resp_sub <- df %>%
+  df %>%
     pi_prop() %>%
     dplyr::filter(pi_prop == "proper") %>%
     dplyr::select(
@@ -326,32 +333,22 @@ summarize_evali <- function(df) {
     dplyr::distinct(.data$screen_id, .data$name, .data$value, .keep_all = TRUE) %>%
     dplyr::group_by(.data$project, .data$name, .data$trt_grp) %>%
     dplyr::count()
-
-  resp_vector <- split(resp_sub, f = resp_sub$project)
-
-  p1 <- resp_vector[[1]] %>% tidyr::pivot_wider(
-    names_from = .data$trt_grp,
-    values_from = .data$n,
-    values_fill = 0
-  )
-
-  p2 <- resp_vector[[2]] %>%  tidyr::pivot_wider(
-    names_from = .data$trt_grp,
-    values_from = .data$n,
-    values_fill = 0
-  )
-
-  p3 <- resp_vector[[3]] %>% tidyr::pivot_wider(
-    names_from = .data$trt_grp,
-    values_from = .data$n,
-    values_fill = 0
-  )
-
-  list(p1, p2, p3)
 }
 
 
-ivr_summary_dsmb <- function(ivr_sum) {
+#' IVR Weekbin DSMB
+#'
+#' @description  Impose week bins on IVR data for main trial DSMB summary
+#' @param ivr_sum summarized IVR data frame from tcoRs::summarize_ivr()
+#'
+#' @return data frame with `week_bin` column
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' ivr_weekbin_dsmb(ivr_sum)
+#' }
+ivr_weekbin_dsmb <- function(ivr_sum) {
   ivr_sum <- ivr_sum[[1]]
   ivr_sum$week_bin <- NA
   ivr_sum$week_bin[ivr_sum$week == "week0"] <- "baseline"
@@ -361,10 +358,28 @@ ivr_summary_dsmb <- function(ivr_sum) {
   ivr_sum$week_bin[ivr_sum$week %in% c("week13", "week14", "week15", "week16")] <- "weeks_13-16"
 
   ivr_sum$week_bin <- factor(ivr_sum$week_bin, levels = c("baseline", "weeks_1-4", "weeks_5-8", "weeks_9-12", "weeks_13-16"))
+  return(ivr_sum)
+}
+
+
+#' IVR Use Summary DSMB
+#'
+#' @param ivr_sum summarized IVR data frame from tcoRs::summarize_ivr()
+#'
+#' @return vector of cig and ecig use
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' ivr_summary_dsmb(ivr_sum)
+#' }
+ivr_summary_dsmb <- function(ivr_sum) {
+  ivr_sum <- ivr_weekbin_dsmb(ivr_sum)
 
   names(ivr_sum) <- stringr::str_remove_all(names(ivr_sum), "_mean")
   ivr_summary <- ivr_sum %>%
-    dplyr::mutate(nonstudycigs = ifelse(week_bin == "baseline", cigs, nonstudycigs)) %>%
+    dplyr::filter(pi_prop == "proper") %>%
+    dplyr::mutate(nonstudycigs = ifelse(.data$week_bin == "baseline", .data$cigs, .data$nonstudycigs)) %>%
     dplyr::group_by(.data$project, .data$letter_code, .data$week_bin) %>%
     dplyr::summarize(
       dplyr::across(c(
@@ -380,17 +395,116 @@ ivr_summary_dsmb <- function(ivr_sum) {
     tidyr::pivot_longer(
       -c(.data$project, .data$letter_code, .data$week_bin)
     ) %>%
-    dplyr::filter(!is.na(.data$value) & !is.na(.data$letter_code))
+    dplyr::filter(!is.na(.data$value) & !is.na(.data$letter_code)) %>%
+    dplyr::arrange(.data$project, .data$letter_code, .data$week_bin, .data$name)
 
+  ivr_summary <- ivr_summary %>% tidyr::pivot_wider(names_from = .data$letter_code)
 
-  ivr_vector <- split(ivr_summary, f = ivr_summary$project)
+  cig <- ivr_summary %>% dplyr::filter(stringr::str_detect(.data$name, "cigs"))
+  ecig <- ivr_summary %>% dplyr::filter(stringr::str_detect(.data$name, "pods"))
 
-  # ivr_vector[[1]] %>%
-  #   tidyr::pivot_wider(
-  #     names_from = "letter_code"
-  #   )
+  list(cig, ecig)
+}
 
-  # TODO: add e-cigarettes, n, peel off proejcts
+#' Number of Participants by Week Bin
+#'
+#' @param ivr_sum exported from tcoRs::summarize_ivr()
+#'
+#' @return tally of participants by binned week
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' ivr_count(ivr_sum)
+#' }
+ivr_count <- function(ivr_sum) {
+  ivr_sum %>%
+    ivr_weekbin_dsmb() %>%
+    dplyr::filter(.data$pi_prop == "proper") %>%
+    dplyr::group_by(.data$week_bin) %>%
+    dplyr::distinct(.data$screen_id) %>%
+    dplyr::count()
+}
+
+#' IVR Ecig Days
+#'
+#' @details Number of days per week participants used ecigarettes
+#' @param ivr_sum Summary IVR data frame
+#'
+#' @return Vector of average e-cig use-days per week, and special quantities
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' ivr_ecig_days(ivr_sum)
+#' }
+ivr_ecig_days <- function(ivr_sum) {
+  df <- ivr_sum %>%
+    dplyr::filter(.data$pi_prop == "proper") %>%
+    dplyr::select(
+      .data$screen_id,
+      .data$project,
+      .data$pi_prop,
+      .data$letter_code,
+      .data$week_bin,
+      .data$nstudypods_mean,
+      .data$nnonstudypods_mean,
+      .data$nstudypods_n,
+      .data$nnonstudypods_n
+    ) %>%
+    dplyr::group_by(.data$project, .data$letter_code, .data$week_bin)
+
+  avg_days <- df %>%
+    dplyr::summarize(
+      dplyr::across(c(
+        .data$nstudypods_n,
+        .data$nnonstudypods_n
+      ), list(mean = mean, median = median, IQR = IQR),
+      na.rm = TRUE
+      ),
+      .groups = "keep"
+    ) %>%
+    tidyr::pivot_longer(
+      -c(.data$project, .data$letter_code, .data$week_bin)
+    ) %>%
+    tidyr::pivot_wider(
+      names_from = "letter_code"
+    ) %>%
+    dplyr::filter(.data$week_bin != "baseline")
+
+  df_special <- df %>%
+    dplyr::mutate(
+      zero_days = .data$nstudypods_n  == 0 | .data$nnonstudypods_n == 0,
+      six_plus_days = .data$nstudypods_n >=6 | .data$nnonstudypods_n >= 6,
+      six_plus_pods = sum(.data$nstudypods_mean, .data$nnonstudypods_mean, na.rm = TRUE) >= 6
+    )
+  zero <- df_special %>%
+    dplyr::filter(.data$zero_days) %>%
+    dplyr::count(name = "zero_days")
+
+  six_plus_days <- df_special %>%
+    dplyr::filter(.data$six_plus_days) %>%
+    dplyr::count(name = "six_plus_days")
+
+  six_plus_pods <- df_special %>%
+    dplyr::filter(.data$six_plus_pods) %>%
+    dplyr::count(name = "six_plus_pods")
+
+  join_seq <- c("project", "letter_code", "week_bin")
+
+  special <- zero %>%
+    dplyr::left_join(six_plus_days, by = join_seq) %>%
+    dplyr::left_join(six_plus_pods, by = join_seq) %>%
+    tidyr::pivot_longer(
+      -tidyselect::all_of(join_seq)
+    ) %>%
+    tidyr::pivot_wider(
+      names_from = "letter_code"
+    ) %>%
+    dplyr::filter(.data$week_bin != "baseline")
+
+  list(avg_days, special)
+
 }
 
 

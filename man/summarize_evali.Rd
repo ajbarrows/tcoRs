@@ -10,7 +10,7 @@ summarize_evali(df)
 \item{df}{data frame exported from tcoRs::get_dsmb_measures()}
 }
 \value{
-vector of data frames for all three project, EVALI severe symtpoms summarized
+data frame of EVALI severe symtpoms summarized
 }
 \description{
 Summarize EVALI symptoms

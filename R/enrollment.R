@@ -226,6 +226,8 @@ session_distribution <- function(rcon) {
 
   rm_str <- "_arm_1"
   df %>%
+    pi_prop %>%
+    dplyr::filter(.data$pi_prop == "proper") %>%
     tidyr::unite(
       col = "date",
       tidyselect::contains("date"),
