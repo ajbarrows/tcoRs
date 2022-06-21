@@ -28,7 +28,8 @@ get_dsmb_measures <- function(rcon) {
   bl <- df_vector[[3]]
 
   df_glued <- rbind(odd, evn) %>%
-    dplyr::left_join(bl, by = c("screen_id", "session", "bdi_total", "oasis_total")) %>%
+    dplyr::full_join(bl, by = c("screen_id", "session", "bdi_total", "oasis_total")) %>%
+    dplyr::mutate(session = factor(.data$session, levels = field_vectors$session_levels_fields)) %>%
     dplyr::arrange(.data$screen_id, .data$session)
 
   # CO
