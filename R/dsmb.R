@@ -189,7 +189,8 @@ value_summary_dsmb <- function(df, variable) {
       -c("project", "trt_grp", "week_bin")
     ) %>%
     tidyr::pivot_wider(
-      names_from = "trt_grp"
+      names_from = "trt_grp",
+      values_fill = 0
     )
 
     df_n <- df %>%
