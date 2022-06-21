@@ -10,7 +10,7 @@ ivr_count(ivr_sum)
 \item{ivr_sum}{exported from tcoRs::summarize_ivr()}
 }
 \value{
-tally of participants by binned week
+tally of participants (1) by group, (2) by binned week
 }
 \description{
 Number of Participants by Week Bin

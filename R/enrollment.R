@@ -301,3 +301,86 @@ demographics <- function(rcon, cond) {
       ))
 }
 
+
+#' Summarize Demographics
+#'
+#' @param dem data frame exported from tcoRs::demographics()
+#' @param enrl data frame exorted from tcoRS::get_maintrial_conditions()
+#' @param which_table one of
+#' * "table1" : characteristics of all screenings by site
+#' * "table2" : characteristics of randomized participants by site
+#' * "table3" : characteristics of all randomized partiicpants by treatment grouop
+#'
+#' @return 3 vectors
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' vector <- summarize_demographics(dem, enrl, "table1")
+#' }
+summarize_demographics <- function(dem, enrl, which_table) {
+  df <- dem %>%
+    dplyr::filter(.data$pi_prop == "proper") %>%
+    dplyr::left_join(enrl %>% dplyr::select(-c(.data$site, .data$project)), by = "screen_id") %>%
+    dplyr::select(
+      .data$screen_id,
+      .data$screen_sex,
+      .data$latino,
+      .data$race,
+      .data$screen_age,
+      .data$trt_grp,
+      .data$site,
+      "randomized" = .data$baseline2_date
+    )  %>%
+    dplyr::mutate(randomized = !is.na(.data$randomized))
+
+  pivot_dem <- function(df, var) {
+    sex <- df %>%
+      dplyr::count(.data$screen_sex) %>%
+      tidyr::pivot_wider(
+        names_from = !!var,
+        values_from = "n"
+      )
+
+    ethnicity <- df %>%
+      dplyr::count(.data$latino) %>%
+      tidyr::pivot_wider(
+        names_from = !!var,
+        values_from = "n"
+      )
+
+    race <- df %>%
+      dplyr::count(.data$race) %>%
+      tidyr::pivot_wider(
+        names_from = !!var,
+        values_from = "n"
+      )
+
+    age <- df %>%
+      dplyr::summarize(
+        mean_age = mean(.data$screen_age, na.rm = TRUE)
+        )
+
+
+    list(sex, ethnicity, race, age)
+  }
+
+  if (which_table == "table1") {
+    df <- df %>%
+      dplyr::group_by(.data$site) %>%
+      pivot_dem("site")
+  } else if (which_table == "table2") {
+    df <- df %>%
+      dplyr::filter(.data$randomized) %>%
+      dplyr::group_by(.data$site) %>%
+      pivot_dem("site")
+  } else if (which_table == "table3") {
+    df <- df %>%
+      dplyr::filter(.data$randomized) %>%
+      dplyr::group_by(.data$trt_grp) %>%
+      pivot_dem("trt_grp")
+  }
+
+df
+
+}

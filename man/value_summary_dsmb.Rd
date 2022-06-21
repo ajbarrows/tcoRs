@@ -12,7 +12,7 @@ value_summary_dsmb(df, variable)
 \item{variable}{string, one of "co", "bdi", or "oasis"}
 }
 \value{
-data frame of values
+data frame of values, data frame of subject counts
 }
 \description{
 Summarize single-column quantity with week-bin variable

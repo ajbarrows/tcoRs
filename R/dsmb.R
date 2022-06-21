@@ -426,7 +426,7 @@ ivr_summary_dsmb <- function(ivr_sum) {
 #'
 #' @param ivr_sum exported from tcoRs::summarize_ivr()
 #'
-#' @return tally of participants by binned week
+#' @return tally of participants (1) by group, (2) by binned week
 #' @export
 #'
 #' @examples
@@ -434,12 +434,29 @@ ivr_summary_dsmb <- function(ivr_sum) {
 #' ivr_count(ivr_sum)
 #' }
 ivr_count <- function(ivr_sum) {
-  ivr_sum %>%
+  count_df <- ivr_sum %>%
     ivr_weekbin_dsmb() %>%
-    dplyr::filter(.data$pi_prop == "proper") %>%
-    dplyr::group_by(.data$week_bin) %>%
+    dplyr::filter(.data$pi_prop == "proper")
+
+  week_sum <- count_df %>%
+    dplyr::group_by(.data$letter_code, .data$week_bin) %>%
     dplyr::distinct(.data$screen_id) %>%
-    dplyr::count()
+    dplyr::count() %>%
+    tidyr::pivot_wider(
+      names_from = "letter_code",
+      values_from = "n"
+    )
+
+  group_sum <- count_df %>%
+    dplyr::group_by(.data$letter_code) %>%
+    dplyr::distinct(.data$screen_id) %>%
+    dplyr::count() %>%
+    tidyr::pivot_wider(
+      names_from = "letter_code",
+      values_from = "n"
+    )
+
+  list(group_sum, week_sum)
 }
 
 #' IVR Ecig Days
