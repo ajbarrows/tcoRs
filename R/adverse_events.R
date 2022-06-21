@@ -78,6 +78,19 @@ clean_ae <- function(ae_df) {
 
 }
 
+#' Summarize AE
+#'
+#' @param ae_clean export from `tcoRs::clean_ae()`
+#' @param cond export from `tcoRs::get_maintrial_conditions()`
+#' @param filter_proper filter for study proper IDs; default = `TRUE`
+#'
+#' @return vector of clean AEs and a set to review
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' summarize_ae(ae_clean, cond)
+#' }
 summarize_ae <- function(ae_clean, cond, filter_proper = TRUE) {
   if (filter_proper) {
     ae_clean <- ae_clean %>%
@@ -103,9 +116,24 @@ summarize_ae <- function(ae_clean, cond, filter_proper = TRUE) {
 
 
 
-# count distinct subject-variable combinations
-# then count distinct subject-description-variable combinations
 
+
+#' Count Adverse Events
+#'
+#' @description count distinct subject-variable combinations,
+# then count distinct subject-description-variable combinations
+#'
+#' @param ae_clean exported from `tcoRs::summarize_ae()`
+#' @param var quoted string of summary variable, e.g. "ae_sev"
+#' @param by_condition summarize output by treatment group; default = `FALSE`
+#'
+#' @return vector of data frames, subject count by group, and AE-subject counts by group
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' count_ae(ae_clean, "ae_sev")
+#' }
 count_ae <- function(ae_clean, var, by_condition = FALSE) {
 
   if (by_condition) {
