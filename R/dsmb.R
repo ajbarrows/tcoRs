@@ -195,7 +195,7 @@ value_summary_dsmb <- function(df, variable) {
 
     df_n <- df %>%
       dplyr::ungroup() %>%
-      dplyr::distinct(.data$screen_id, .data$week_bin) %>%
+      dplyr::distinct(.data$screen_id, .data$week_bin, .keep_all = TRUE) %>%
       dplyr::group_by(.data$trt_grp) %>%
       dplyr::count(.data$week_bin)
 
