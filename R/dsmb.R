@@ -512,7 +512,10 @@ ivr_ecig_days <- function(ivr_sum) {
       zero_days = .data$nstudypods_n  == 0 | .data$nnonstudypods_n == 0,
       six_plus_days = .data$nstudypods_n >=6 | .data$nnonstudypods_n >= 6,
       six_plus_pods = sum(.data$nstudypods_mean, .data$nnonstudypods_mean, na.rm = TRUE) >= 6
-    )
+    ) %>%
+    dplyr::distinct(.data$screen_id, .data$week_bin, .keep_all = TRUE)
+
+
   zero <- df_special %>%
     dplyr::filter(.data$zero_days) %>%
     dplyr::count(name = "zero_days")
