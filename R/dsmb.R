@@ -197,7 +197,8 @@ value_summary_dsmb <- function(df, variable) {
       dplyr::ungroup() %>%
       dplyr::distinct(.data$screen_id, .data$week_bin, .keep_all = TRUE) %>%
       dplyr::group_by(.data$trt_grp) %>%
-      dplyr::count(.data$week_bin)
+      dplyr::count(.data$week_bin) %>%
+      tidyr::pivot_wider(names_from = "trt_grp", values_from = "n")
 
     list(df_values, df_n)
 }
