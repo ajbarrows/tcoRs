@@ -140,6 +140,10 @@ clean_ivr <- function(ivr_raw, enrl) {
       .data$week,
       dplyr::everything()
     ) %>%
+    dplyr::mutate(
+      dplyr::across(.data$studycigs, .data$nonstudycigs),
+      as.numeric
+    ) %>%
     dplyr::select(-.data$callerid) %>%
     pjt_ste() %>%
     pi_prop()
