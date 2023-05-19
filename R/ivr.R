@@ -141,8 +141,7 @@ clean_ivr <- function(ivr_raw, enrl) {
       dplyr::everything()
     ) %>%
     dplyr::mutate(
-      dplyr::across(.data$studycigs, .data$nonstudycigs),
-      as.numeric
+      dplyr::across(c(.data$studycigs, .data$nonstudycigs), as.numeric)
     ) %>%
     dplyr::select(-.data$callerid) %>%
     pjt_ste() %>%
