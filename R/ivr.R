@@ -209,8 +209,7 @@ summarize_ivr <- function(ivr_clean, conditions) {
     ) %>%
     dplyr::summarize(dplyr::across(
       tidyselect::all_of(vars_to_summarize),
-      list(mean = mean, n = ~ sum(!is.na(.x))),
-      na.rm = TRUE
+      list(mean = mean, n = ~ sum(!is.na(.x)))
     ), .groups = "keep"
     ) %>%
     dplyr::filter(!is.na(.data$week))
